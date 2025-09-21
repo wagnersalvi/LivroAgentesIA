@@ -4,6 +4,11 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import datetime
 import random
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain.chains import RetrievalQA # Para a Chain de RAG
+from langchain_openai import ChatOpenAI
+import os
 
 # Exemplo SIMPLIFICADO de função para enviar e-mail.
 # Em produção, usaria a API real do Gmail, Outlook, etc., com OAuth2.0
@@ -102,3 +107,38 @@ def post_slack_message_function(channel: str, message: str) -> str:
     if not channel.strip():
         return "Erro: O canal do Slack não pode ser vazio."
     return f"Mensagem postada com sucesso no canal #{channel}."
+
+
+# Certifique-se que o OPENAI_API_KEY está disponível como variável de ambiente
+# ou passe-o como parâmetro para OpenAIEmbeddings e ChatOpenAI
+
+def query_knowledge_base_function(query: str) -> str:
+    """
+    Consulta a base de conhecimento ChromaDB para obter informações relevantes.
+    Parâmetros: query (str) - A pergunta a ser feita à base de conhecimento.
+    """
+    # A base de conhecimento deve ter sido persistida em ./chroma_db
+    persist_directory = "./chroma_db"
+
+    # Carrega o modelo de embeddings (mesmo usado para indexar)
+    # Certifique-se que OPENAI_API_KEY está configurada no ambiente
+    embeddings_model = OpenAIEmbeddings(openai_api_key=os.getenv("OPENAI_API_KEY"))
+
+    # Carrega a base de dados vetorial existente
+    vectordb = Chroma(persist_directory=persist_directory, embedding_function=embeddings_model)
+
+    # Cria um retrievador (retriever) a partir do VectorDB
+    retriever = vectordb.as_retriever()
+
+    # Cria um LLM para a etapa de Geração (o mesmo LLM principal do agente ou um específico para RAG)
+    llm_rag = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.0, openai_api_key=os.getenv("OPENAI_API_KEY"))
+
+    # Cria a cadeia de RetrievalQA (RAG)
+    qa_chain = RetrievalQA.from_chain_type(llm=llm_rag, chain_type="stuff", retriever=retriever)
+
+    # Executa a query
+    try:
+        result = qa_chain.invoke({"query": query})
+        return result['result']
+    except Exception as e:
+        return f"Erro ao consultar a base de conhecimento: {e}"
