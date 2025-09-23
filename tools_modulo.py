@@ -142,3 +142,44 @@ def query_knowledge_base_function(query: str) -> str:
         return result['result']
     except Exception as e:
         return f"Erro ao consultar a base de conhecimento: {e}"
+
+
+
+from textblob import TextBlob # pip install textblob
+def analyze_sentiment(text: str) -> str:
+    analysis = TextBlob(text)
+    if analysis.sentiment.polarity > 0:
+        return "Positivo"
+    elif analysis.sentiment.polarity < 0:
+        return "Negativo"
+    else:
+        return "Neutro"
+# Adicionar ao agente:
+# Tool(name="Sentiment Analyzer", func=analyze_sentiment, description="Útil para analisar o sentimento de um texto (Positivo, Negativo, Neutro).")
+
+
+# Simulação: em um cenário real, usaria um LLM ou um serviço de geração de código
+def generate_code_snippet(description: str, language: str) -> str:
+    if language.lower() == "python":
+        return f"# Python code for: {description}\ndef example_function():\n    pass"
+    elif language.lower() == "javascript":
+        return f"// Javascript code for: {description}\nfunction exampleFunction() {{}}"
+    return "Linguagem não suportada para geração de snippet."
+# Adicionar ao agente:
+# Tool(name="Code Generator", func=generate_code_snippet, description="Gera um snippet de código em uma linguagem específica (python, javascript) dado uma descrição.")
+
+
+
+import sqlite3 # Exemplo com SQLite
+def query_database(sql_query: str) -> str:
+    try:
+        conn = sqlite3.connect('my_data.db') # Conexão com DB
+        cursor = conn.cursor()
+        cursor.execute(sql_query)
+        results = cursor.fetchall()
+        conn.close()
+        return str(results) # Retorna resultados como string
+    except Exception as e:
+        return f"Erro ao executar SQL: {e}"
+# Adicionar ao agente:
+# Tool(name="Database Query", func=query_database, description="Executa uma consulta SQL segura em um banco de dados interno. Útil para extrair dados brutos.")
